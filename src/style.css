@@ -6,6 +6,7 @@
 html,
 body {
   overflow: hidden;
+  font-family: Arial, Helvetica, Arial, sans-serif;
 }
 
 #webgl-container {
@@ -17,7 +18,7 @@ body {
 }
 
 #loading-container {
-  display: none;
+  display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;

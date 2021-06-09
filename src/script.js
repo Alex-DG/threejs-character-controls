@@ -3,56 +3,100 @@ import './style.css'
 import * as THREE from 'three'
 import * as dat from 'dat.gui'
 
+import { hideLoader } from './utils/loader'
+
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 
-const DEFAULT_ANIMATION_PATH = '/models/Girl/girl-walk.fbx'
+const MODEL_PATH = '/models/girl/'
+export default class Demo {
+  constructor() {
+    this.init()
+  }
 
-const ALL_ANIMATIONS = ['run', 'gather-objects', 'look-around']
-
-export default class Game {
-  constructor(options) {
-    // this.time = 0
+  init() {
     this.stats = Stats()
-    this.container = options.dom
+    document.body.appendChild(this.stats.dom)
 
     this.time = new THREE.Clock()
+    this.previousTime = 0
 
-    this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0xa0a0a0)
-    this.scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000)
+    this.container = document.getElementById('webgl-container')
 
     this.width = this.container.offsetWidth
     this.height = this.container.offsetHeight
 
-    this.camera = new THREE.PerspectiveCamera(
-      70,
-      this.width / this.height,
-      1,
-      2000
-    )
-
-    this.camera.position.y = 200
-    this.camera.position.z = 300
-
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
-    this.renderer.setSize(this.width, this.height)
+    // Renderer
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+    })
+    this.renderer.shadowMap.enabled = true
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    this.renderer.setSize(this.width, this.height)
 
     this.container.appendChild(this.renderer.domElement)
 
+    // Camera
+    const fov = 60
+    const aspect = this.width / this.height
+    const near = 1.0
+    const far = 1000.0
+    this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
+    this.camera.position.set(0, 20, 60)
+
+    // Scene
+    this.scene = new THREE.Scene()
+    this.scene.background = new THREE.Color(0xa0a0a0)
+    this.scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000)
+
+    // Light
+    let light = new THREE.DirectionalLight(0xffffff, 1.0)
+    light.position.set(20, 100, 10)
+    light.target.position.set(0, 0, 0)
+    light.castShadow = true
+    light.shadow.bias = -0.001
+    light.shadow.mapSize.width = 2048
+    light.shadow.mapSize.height = 2048
+    light.shadow.camera.near = 0.1
+    light.shadow.camera.far = 500.0
+    light.shadow.camera.near = 0.5
+    light.shadow.camera.far = 500.0
+    light.shadow.camera.left = 100
+    light.shadow.camera.right = -100
+    light.shadow.camera.top = 100
+    light.shadow.camera.bottom = -100
+    this.scene.add(light)
+
+    light = new THREE.AmbientLight(0xffffff, 4.0)
+    this.scene.add(light)
+
+    // Control
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
+    this.controls.enableDamping = true
+    this.controls.target.set(0, 20, 0)
+    this.controls.update()
 
-    this.animations = ALL_ANIMATIONS.map(
-      (animation) => `/models/Girl/${animation}.fbx`
+    // Ground
+    const grid = new THREE.GridHelper(150, 10, 0x000000, 0x000000)
+    grid.material.opacity = 0.2
+    grid.material.transparent = true
+
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(150, 150, 10, 10),
+      new THREE.MeshStandardMaterial({
+        color: 'white',
+      })
     )
+    plane.castShadow = false
+    plane.receiveShadow = true
+    plane.rotation.x = -Math.PI / 2
 
-    this.addStats()
-    this.addLights()
-    this.addObjects()
+    this.scene.add(plane, grid)
 
     this.setupResize()
+    this.loadAnimatedModel()
     this.render()
   }
 
@@ -60,70 +104,37 @@ export default class Game {
     this.width = this.container.offsetWidth
     this.height = this.container.offsetHeight
 
-    this.renderer.setSize(this.width, this.height)
-
     this.camera.aspect = this.width / this.height
     this.camera.updateProjectionMatrix()
+    this.renderer.setSize(this.width, this.height)
   }
 
   setupResize() {
     window.addEventListener('resize', this.resize.bind(this))
   }
 
-  addStats() {
-    document.body.appendChild(this.stats.dom)
-  }
-
-  addLights() {
-    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444)
-    hemisphereLight.position.set(0, 200, 0)
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff)
-    directionalLight.position.set(0, 200, 100)
-    directionalLight.castShadow = true
-    directionalLight.shadow.camera.top = 180
-    directionalLight.shadow.camera.bottom = -100
-    directionalLight.shadow.camera.left = -120
-    directionalLight.shadow.camera.right = 120
-
-    this.scene.add(hemisphereLight, directionalLight)
-  }
-
-  addObjects() {
-    // this.geometry = new THREE.BoxGeometry(1, 1, 1)
-    // this.material = new THREE.MeshPhongMaterial({ color: 0x00aaff })
-    // this.cube = new THREE.Mesh(this.geometry, this.material)
-    // this.scene.add(this.cube)
-
-    this.ground = new THREE.Mesh(
-      new THREE.PlaneBufferGeometry(2000, 2000),
-      new THREE.MeshPhongMaterial({ color: 0x999999, depthWrite: false })
-    )
-    this.ground.rotation.x = -Math.PI / 2
-    this.ground.receiveShadow = true
-
-    this.grid = new THREE.GridHelper(2000, 40, 0x000000, 0x000000)
-    this.grid.material.opacity = 0.2
-    this.grid.material.transparent = true
-
-    this.scene.add(this.grid, this.ground)
-
-    /**
-     * Load model
-     */
+  loadAnimatedModel() {
     const loader = new FBXLoader()
-    loader.load(DEFAULT_ANIMATION_PATH, (object) => {
-      console.log('DEFAULT_ANIMATION_PATH =>', { object })
-      object.mixer = new THREE.AnimationMixer(object)
-      object.name = 'Girl'
-      object.traverse(function (child) {
-        if (child.isMesh) {
-          child.castShadow = true
-          child.receiveShadow = true
-        }
+    loader.setPath(MODEL_PATH)
+
+    loader.load('eve_j_gonzales.fbx', (fbx) => {
+      fbx.scale.setScalar(0.1)
+      fbx.traverse((child) => {
+        child.castShadow = true
       })
 
-      this.scene.add(object)
+      const anim = new FBXLoader()
+      anim.setPath(MODEL_PATH)
+
+      anim.load('dance.fbx', (anim) => {
+        this.mixer = new THREE.AnimationMixer(fbx)
+        const idle = this.mixer.clipAction(anim.animations[0])
+        idle.play()
+      })
+
+      this.scene.add(fbx)
+
+      hideLoader()
     })
   }
 
@@ -131,9 +142,11 @@ export default class Game {
     this.stats.begin()
 
     const elapsedTime = this.time.getElapsedTime()
+    const deltaTime = elapsedTime - this.previousTime
+    this.previousTime = elapsedTime
 
-    // this.cube.rotation.y = elapsedTime * 0.5
-    // this.cube.rotation.x = elapsedTime * 0.5
+    // Model animation
+    this.mixer?.update(deltaTime)
 
     this.renderer.render(this.scene, this.camera)
 
@@ -143,19 +156,10 @@ export default class Game {
   }
 }
 
-const env = process.env.NODE_ENV
+new Demo()
 
-if (env === 'development') {
-  // Access Game class from the terminal for debugging only
-  window.addEventListener('DOMContentLoaded', () => {
-    const game = new Game({
-      dom: document.getElementById('webgl-container'),
-    })
-    window.game = game
-  })
-} else {
-  // staging or production
-  new Game({
-    dom: document.getElementById('webgl-container'),
-  })
-}
+// const env = process.env.NODE_ENV
+window.addEventListener('DOMContentLoaded', () => {
+  const demo = new Demo()
+  window.demo = demo
+})
