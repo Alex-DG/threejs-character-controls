@@ -11,79 +11,292 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 
 const MODEL_PATH = '/models/girl/'
 
-class BasicCharacterControls {
-  constructor(params) {
-    this.params = params // <=> { target, camera } with target = fbx model
+/**
+ * Action State
+ */
+class State {
+  constructor(parent) {
+    this.parent = parent
+  }
 
-    this.move = {
-      forward: false,
-      backward: false,
-      left: false,
-      right: false,
+  enter() {}
+  exit() {}
+  update() {}
+}
+
+class DanceState extends State {
+  constructor(parent) {
+    super(parent)
+
+    this.finishedCallback = () => {
+      this.finished()
     }
+  }
+
+  get name() {
+    return 'dance'
+  }
+
+  enter(prevState) {
+    const currentAction = this.parent.proxy.animations['dance'].action
+
+    const mixer = currentAction.getMixer()
+    mixer.addEventListener('finished', this.finishedCallback)
+
+    if (prevState) {
+      const prevAction = this.parent.proxy.animations[prevState.name].action
+
+      currentAction.reset()
+      currentAction.setLoop(THREE.LoopOnce, 1)
+      currentAction.clampWhenFinished = true
+      currentAction.crossFadeFrom(prevAction, 0.2, true)
+      currentAction.play()
+    } else {
+      currentAction.play()
+    }
+  }
+
+  finished() {
+    this.cleanup()
+    this.parent.setState('idle')
+  }
+
+  cleanup() {
+    const action = this.parent.proxy.animations['dance'].action
+    action.getMixer().removeEventListener('finished', this.cleanupCallback)
+  }
+
+  exit() {
+    this.cleanup()
+  }
+
+  update(_) {}
+}
+
+class WalkState extends State {
+  constructor(parent) {
+    super(parent)
+  }
+
+  get name() {
+    return 'walk'
+  }
+
+  enter(prevState) {
+    const currentAction = this.parent.proxy.animations['walk'].action
+
+    if (prevState) {
+      const prevAction = this.parent.proxy.animations[prevState.name].action
+
+      currentAction.enabled = true
+
+      if (prevState.name == 'run') {
+        const ratio =
+          currentAction.getClip().duration / prevAction.getClip().duration
+        currentAction.time = prevAction.time * ratio
+      } else {
+        currentAction.time = 0.0
+        currentAction.setEffectiveTimeScale(1.0)
+        currentAction.setEffectiveWeight(1.0)
+      }
+
+      currentAction.crossFadeFrom(prevAction, 0.5, true)
+      currentAction.play()
+    } else {
+      currentAction.play()
+    }
+  }
+
+  exit() {}
+
+  update(_, input) {
+    if (input.keys.forward || input.keys.backward) {
+      if (input.keys.shift) {
+        this.parent.setState('run')
+      }
+
+      return
+    }
+
+    this.parent.setState('idle')
+  }
+}
+
+class RunState extends State {
+  constructor(parent) {
+    super(parent)
+  }
+
+  get name() {
+    return 'run'
+  }
+
+  enter(prevState) {
+    const currentAction = this.parent.proxy.animations['run'].action
+
+    if (prevState) {
+      const prevAction = this.parent.proxy.animations[prevState.name].action
+
+      currentAction.enabled = true
+
+      if (prevState.name == 'walk') {
+        const ratio =
+          currentAction.getClip().duration / prevAction.getClip().duration
+        currentAction.time = prevAction.time * ratio
+      } else {
+        currentAction.time = 0.0
+        currentAction.setEffectiveTimeScale(1.0)
+        currentAction.setEffectiveWeight(1.0)
+      }
+
+      currentAction.crossFadeFrom(prevAction, 0.5, true)
+      currentAction.play()
+    } else {
+      currentAction.play()
+    }
+  }
+
+  exit() {}
+
+  update(_, input) {
+    if (input.keys.forward || input.keys.backward) {
+      if (!input.keys.shift) {
+        this.parent.setState('walk')
+      }
+
+      return
+    }
+
+    this.parent.setState('idle')
+  }
+}
+
+class IdleState extends State {
+  constructor(parent) {
+    super(parent)
+  }
+
+  get name() {
+    return 'idle'
+  }
+
+  enter(prevState) {
+    const idleAction = this.parent.proxy.animations['idle'].action
+
+    if (prevState) {
+      const prevAction = this.parent.proxy.animations[prevState.name].action
+
+      idleAction.time = 0.0
+      idleAction.enabled = true
+      idleAction.setEffectiveTimeScale(1.0)
+      idleAction.setEffectiveWeight(1.0)
+      idleAction.crossFadeFrom(prevAction, 0.5, true)
+      idleAction.play()
+    } else {
+      idleAction.play()
+    }
+  }
+
+  exit() {}
+
+  update(_, input) {
+    if (input.keys.forward || input.keys.backward) {
+      this.parent.setState('walk')
+    } else if (input.keys.space) {
+      this.parent.setState('dance')
+    }
+  }
+}
+
+class BasicCharacterControllerProxy {
+  constructor(animations) {
+    this._animations = animations
+  }
+
+  get animations() {
+    return this._animations
+  }
+}
+
+class BasicCharacterController {
+  constructor(params) {
+    this.params = params // <=> { camera, scene }
 
     this.decceleration = new THREE.Vector3(-0.0005, -0.0001, -5.0)
     this.acceleration = new THREE.Vector3(1.0, 0.25, 50.0)
     this.velocity = new THREE.Vector3(0, 0, 0)
 
-    document.addEventListener(
-      'keydown',
-      (event) => this.onKeyDown(event),
-      false
+    this.animations = {}
+
+    this.input = new BasicCharacterControllerInput()
+    this.stateMachine = new CharacterFSM(
+      new BasicCharacterControllerProxy(this.animations)
     )
-    document.addEventListener('keyup', (event) => this.onKeyUp(event), false)
+
+    this.loadModels()
   }
 
-  onKeyDown(event) {
-    switch (event.keyCode) {
-      case 87: // w
-        this.move.forward = true
-        break
-      case 65: // a
-        this.move.left = true
-        break
-      case 83: // s
-        this.move.backward = true
-        break
-      case 68: // d
-        this.move.right = true
-        break
-      case 38: // up
-      case 37: // left
-      case 40: // down
-      case 39: // right
-        break
-    }
-  }
+  loadModels() {
+    const loader = new FBXLoader()
+    loader.setPath(MODEL_PATH)
 
-  onKeyUp(event) {
-    switch (event.keyCode) {
-      case 87: // w
-        this.move.forward = false
-        break
-      case 65: // a
-        this.move.left = false
-        break
-      case 83: // s
-        this.move.backward = false
-        break
-      case 68: // d
-        this.move.right = false
-        break
-      case 38: // up
-      case 37: // left
-      case 40: // down
-      case 39: // right
-        break
-    }
+    loader.load('eve_j_gonzales.fbx', (fbx) => {
+      fbx.scale.setScalar(0.1)
+      fbx.traverse((child) => {
+        child.castShadow = true
+      })
+
+      this.target = fbx
+      this.params.scene.add(fbx)
+
+      this.mixer = new THREE.AnimationMixer(fbx)
+
+      this.manager = new THREE.LoadingManager()
+      this.manager.onLoad = () => {
+        this.stateMachine.setState('idle')
+      }
+
+      const onLoadAnimation = (name, data) => {
+        const clip = data.animations[0]
+        const action = this.mixer.clipAction(clip)
+
+        // this.animations = { ...this.animations, [name]: { clip, action } }
+        this.animations[name] = {
+          clip,
+          action,
+        }
+      }
+
+      const loaderWithManager = new FBXLoader(this.manager)
+      loaderWithManager.setPath(MODEL_PATH)
+
+      loaderWithManager.load('walk.fbx', (data) => {
+        onLoadAnimation('walk', data)
+      })
+      loaderWithManager.load('idle.fbx', (data) => {
+        onLoadAnimation('idle', data)
+      })
+      loaderWithManager.load('dance.fbx', (data) => {
+        onLoadAnimation('dance', data)
+      })
+      loaderWithManager.load('run.fbx', (data) => {
+        onLoadAnimation('run', data)
+
+        hideLoader()
+      })
+    })
   }
 
   /**
    * Apply movement to the character
    *
-   * @param time - in seconds
+   * @param time - seconds
    */
   update(time) {
+    if (!this.target) return
+
+    this.stateMachine.update(time, this.input)
+
     const velocity = this.velocity
 
     const frameDecceleration = new THREE.Vector3(
@@ -91,6 +304,7 @@ class BasicCharacterControls {
       velocity.y * this.decceleration.y,
       velocity.z * this.decceleration.z
     )
+
     frameDecceleration.multiplyScalar(time)
     frameDecceleration.z =
       Math.sign(frameDecceleration.z) *
@@ -98,29 +312,33 @@ class BasicCharacterControls {
 
     velocity.add(frameDecceleration)
 
-    const controlObject = this.params.target
-
+    const controlObject = this.target
     const Q = new THREE.Quaternion()
     const A = new THREE.Vector3()
     const R = controlObject.quaternion.clone()
 
-    if (this.move.forward) {
-      velocity.z += this.acceleration.z * time
-    }
+    const acc = this.acceleration.clone()
 
-    if (this.move.backward) {
-      velocity.z -= this.acceleration.z * time
+    if (this.input.keys.shift) {
+      acc.multiplyScalar(2.0)
     }
-
-    if (this.move.left) {
+    if (this.stateMachine.currentState?.name == 'dance') {
+      acc.multiplyScalar(0.0)
+    }
+    if (this.input.keys.forward) {
+      velocity.z += acc.z * time
+    }
+    if (this.input.keys.backward) {
+      velocity.z -= acc.z * time
+    }
+    if (this.input.keys.left) {
       A.set(0, 1, 0)
-      Q.setFromAxisAngle(A, Math.PI * time * this.acceleration.y)
+      Q.setFromAxisAngle(A, 4.0 * Math.PI * time * this.acceleration.y)
       R.multiply(Q)
     }
-
-    if (this.move.right) {
+    if (this.input.keys.right) {
       A.set(0, 1, 0)
-      Q.setFromAxisAngle(A, -Math.PI * time * this.acceleration.y)
+      Q.setFromAxisAngle(A, 4.0 * -Math.PI * time * this.acceleration.y)
       R.multiply(Q)
     }
 
@@ -144,6 +362,137 @@ class BasicCharacterControls {
     controlObject.position.add(sideways)
 
     oldPosition.copy(controlObject.position)
+
+    this.mixer?.update(time)
+  }
+}
+
+/**
+ * Keyboard listeners on press keys up and down
+ */
+class BasicCharacterControllerInput {
+  constructor() {
+    this.keys = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false,
+      space: false,
+      shift: false,
+    }
+
+    document.addEventListener(
+      'keydown',
+      (event) => this.onKeyDown(event),
+      false
+    )
+
+    document.addEventListener('keyup', (event) => this.onKeyUp(event), false)
+  }
+
+  onKeyDown({ keyCode }) {
+    switch (keyCode) {
+      case 87: // w
+        this.keys.forward = true
+        break
+      case 65: // a
+        this.keys.left = true
+        break
+      case 83: // s
+        this.keys.backward = true
+        break
+      case 68: // d
+        this.keys.right = true
+        break
+      case 32: // SPACE
+        this.keys.space = true
+        break
+      case 16: // SHIFT
+        this.keys.shift = true
+        break
+    }
+  }
+
+  onKeyUp({ keyCode }) {
+    switch (keyCode) {
+      case 87: // w
+        this.keys.forward = false
+        break
+      case 65: // a
+        this.keys.left = false
+        break
+      case 83: // s
+        this.keys.backward = false
+        break
+      case 68: // d
+        this.keys.right = false
+        break
+      case 32: // SPACE
+        this.keys.space = false
+        break
+      case 16: // SHIFT
+        this.keys.shift = false
+        break
+    }
+  }
+}
+
+/**
+ * Final-State Machine
+ * https://en.wikipedia.org/wiki/Finite-state_machine
+ *
+ * The FSM can change from one state to another in response to some inputs
+ *
+ * idle -> 'forward key' -> walk
+ * walk -> 'stop' -> idle
+ *
+ * walk -> 'shift key' -> run
+ * run -> 'no shift key' ->  walk
+ *
+ * idle -> 'space key' -> dance
+ * dance -> 'no space key' -> idle
+ *
+ */
+class FiniteStateMachine {
+  constructor() {
+    this.states = {}
+    this.currentState = null
+  }
+
+  addState(name, type) {
+    this.states[name] = type
+  }
+
+  setState(name) {
+    const prevState = this.currentState
+
+    if (prevState) {
+      if (prevState.name == name) {
+        return
+      }
+      prevState.exit()
+    }
+
+    const state = new this.states[name](this)
+
+    this.currentState = state
+    state.enter(prevState)
+  }
+
+  update(timeElapsed, input) {
+    this.currentState?.update(timeElapsed, input)
+  }
+}
+
+class CharacterFSM extends FiniteStateMachine {
+  constructor(proxy) {
+    super()
+    this.proxy = proxy
+
+    this.addState('idle', IdleState)
+    this.addState('walk', WalkState)
+    this.addState('run', RunState)
+    this.addState('dance', DanceState)
   }
 }
 
@@ -160,6 +509,7 @@ export default class Demo {
     this.previousTime = 0
 
     this.mixers = []
+    this.currentAction = null
 
     this.container = document.getElementById('webgl-container')
 
@@ -257,34 +607,39 @@ export default class Demo {
   }
 
   loadAnimatedModel() {
-    const loader = new FBXLoader()
-    loader.setPath(MODEL_PATH)
+    this.controls = new BasicCharacterController({
+      camera: this.camera,
+      scene: this.scene,
+    })
+  }
 
-    loader.load('eve_j_gonzales.fbx', (fbx) => {
+  /**
+   * Load any model and play first animation
+   * from different path and position
+   */
+  loadAnimatedModelAndPlay(path, modelFile, animFile, offset) {
+    const loader = new FBXLoader()
+    loader.setPath(path)
+
+    loader.load(modelFile, (fbx) => {
       fbx.scale.setScalar(0.1)
       fbx.traverse((child) => {
         child.castShadow = true
       })
-
-      // Character controls
-      this.controls = new BasicCharacterControls({
-        target: fbx,
-        camera: this.camera,
-      })
+      fbx.position.copy(offset)
 
       const anim = new FBXLoader()
-      anim.setPath(MODEL_PATH)
+      anim.setPath(path)
 
-      anim.load('walk.fbx', (anim) => {
-        const animationMixer = new THREE.AnimationMixer(fbx)
-        this.mixers.push(animationMixer)
+      anim.load(animFile, (anim) => {
+        const m = new THREE.AnimationMixer(fbx)
+        this.mixers.push(m)
 
-        const action = animationMixer.clipAction(anim.animations[0])
-        action.play()
+        const idle = m.clipAction(anim.animations[0])
+        idle.play()
       })
 
       this.scene.add(fbx)
-      hideLoader() // hide loader overlay
     })
   }
 
@@ -307,8 +662,6 @@ export default class Demo {
     this.stats.end()
   }
 }
-
-new Demo()
 
 // const env = process.env.NODE_ENV
 window.addEventListener('DOMContentLoaded', () => {

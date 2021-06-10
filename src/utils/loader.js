@@ -1,7 +1,9 @@
-/**
- * Hide loader overlay
- */
 export const hideLoader = () => {
+  // Hide loader
   const loadingContainer = document.getElementById('loading-container')
   loadingContainer?.remove()
+
+  // Show panel
+  const panel = document.getElementById('panel-controls')
+  panel.style.display = 'block'
 }
