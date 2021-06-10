@@ -1,5 +1,9 @@
 # Three.JS FBX Loader
 
+Load FBX character with animations.
+
+By pressing one of these keys: w,a,s,d and shift or space, you will be able to controle the character loaded
+
 ## Setup
 
 Download [Node.js](https://nodejs.org/en/download/).

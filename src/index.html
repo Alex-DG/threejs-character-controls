@@ -1,27 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Three.JS FBX Loader</title>
-</head>
+  </head>
 
-<body>
-    <div id="webgl-container"></div>
+  <body>
+    <div id="root">
+      <div id="webgl-container"></div>
 
-    <ul id="panel-controls">
-        <li>Forward: 'w'</li>
-        <li>Backward: 's'</li>
-        <li>Left: 'a'</li>
-        <li>Right: 'd'</li>
-        <li>Run: 'shift'</li>
-        <li>Dance: 'space'</li>
-    </ul>
-    
-    <div id="loading-container">
+      <ul id="panel-controls">
+        <li><b>Actions</b> <b>Keys</b></li>
+        <li><span>⬆️</span> <span>'w'</span></li>
+        <li><span>⬇️</span> <span>'s'</span></li>
+        <li><span>⬅️</span> <span>'a'</span></li>
+        <li><span>➡️</span> <span>'d'</span></li>
+        <li><span>🏃🏻‍♀️</span> <span>'shift'</span></li>
+        <li><span>💃🏻</span> <span>'space'</span></li>
+      </ul>
+
+      <div id="loading-container">
         <div class="loader"></div>
         <span class="loader-text">L O A D I N G</span>
-    <div> 
-</body>
+      </div>
+    </div>
+  </body>
 </html>
