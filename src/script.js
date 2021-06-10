@@ -10,6 +10,143 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 
 const MODEL_PATH = '/models/girl/'
+
+class BasicCharacterControls {
+  constructor(params) {
+    this.params = params // <=> { target, camera } with target = fbx model
+
+    this.move = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false,
+    }
+
+    this.decceleration = new THREE.Vector3(-0.0005, -0.0001, -5.0)
+    this.acceleration = new THREE.Vector3(1.0, 0.25, 50.0)
+    this.velocity = new THREE.Vector3(0, 0, 0)
+
+    document.addEventListener(
+      'keydown',
+      (event) => this.onKeyDown(event),
+      false
+    )
+    document.addEventListener('keyup', (event) => this.onKeyUp(event), false)
+  }
+
+  onKeyDown(event) {
+    switch (event.keyCode) {
+      case 87: // w
+        this.move.forward = true
+        break
+      case 65: // a
+        this.move.left = true
+        break
+      case 83: // s
+        this.move.backward = true
+        break
+      case 68: // d
+        this.move.right = true
+        break
+      case 38: // up
+      case 37: // left
+      case 40: // down
+      case 39: // right
+        break
+    }
+  }
+
+  onKeyUp(event) {
+    switch (event.keyCode) {
+      case 87: // w
+        this.move.forward = false
+        break
+      case 65: // a
+        this.move.left = false
+        break
+      case 83: // s
+        this.move.backward = false
+        break
+      case 68: // d
+        this.move.right = false
+        break
+      case 38: // up
+      case 37: // left
+      case 40: // down
+      case 39: // right
+        break
+    }
+  }
+
+  /**
+   * Apply movement to the character
+   *
+   * @param time - in seconds
+   */
+  update(time) {
+    const velocity = this.velocity
+
+    const frameDecceleration = new THREE.Vector3(
+      velocity.x * this.decceleration.x,
+      velocity.y * this.decceleration.y,
+      velocity.z * this.decceleration.z
+    )
+    frameDecceleration.multiplyScalar(time)
+    frameDecceleration.z =
+      Math.sign(frameDecceleration.z) *
+      Math.min(Math.abs(frameDecceleration.z), Math.abs(velocity.z))
+
+    velocity.add(frameDecceleration)
+
+    const controlObject = this.params.target
+
+    const Q = new THREE.Quaternion()
+    const A = new THREE.Vector3()
+    const R = controlObject.quaternion.clone()
+
+    if (this.move.forward) {
+      velocity.z += this.acceleration.z * time
+    }
+
+    if (this.move.backward) {
+      velocity.z -= this.acceleration.z * time
+    }
+
+    if (this.move.left) {
+      A.set(0, 1, 0)
+      Q.setFromAxisAngle(A, Math.PI * time * this.acceleration.y)
+      R.multiply(Q)
+    }
+
+    if (this.move.right) {
+      A.set(0, 1, 0)
+      Q.setFromAxisAngle(A, -Math.PI * time * this.acceleration.y)
+      R.multiply(Q)
+    }
+
+    controlObject.quaternion.copy(R)
+
+    const oldPosition = new THREE.Vector3()
+    oldPosition.copy(controlObject.position)
+
+    const forward = new THREE.Vector3(0, 0, 1)
+    forward.applyQuaternion(controlObject.quaternion)
+    forward.normalize()
+
+    const sideways = new THREE.Vector3(1, 0, 0)
+    sideways.applyQuaternion(controlObject.quaternion)
+    sideways.normalize()
+
+    sideways.multiplyScalar(velocity.x * time)
+    forward.multiplyScalar(velocity.z * time)
+
+    controlObject.position.add(forward)
+    controlObject.position.add(sideways)
+
+    oldPosition.copy(controlObject.position)
+  }
+}
+
 export default class Demo {
   constructor() {
     this.init()
@@ -21,6 +158,8 @@ export default class Demo {
 
     this.time = new THREE.Clock()
     this.previousTime = 0
+
+    this.mixers = []
 
     this.container = document.getElementById('webgl-container')
 
@@ -72,11 +211,14 @@ export default class Demo {
     light = new THREE.AmbientLight(0xffffff, 4.0)
     this.scene.add(light)
 
-    // Control
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement)
-    this.controls.enableDamping = true
-    this.controls.target.set(0, 20, 0)
-    this.controls.update()
+    // Orbit Controls
+    this.orbitControls = new OrbitControls(
+      this.camera,
+      this.renderer.domElement
+    )
+    // this.orbitControls.enableDamping = true
+    this.orbitControls.target.set(0, 20, 0)
+    this.orbitControls.update()
 
     // Ground
     const grid = new THREE.GridHelper(150, 10, 0x000000, 0x000000)
@@ -106,6 +248,7 @@ export default class Demo {
 
     this.camera.aspect = this.width / this.height
     this.camera.updateProjectionMatrix()
+
     this.renderer.setSize(this.width, this.height)
   }
 
@@ -123,18 +266,25 @@ export default class Demo {
         child.castShadow = true
       })
 
+      // Character controls
+      this.controls = new BasicCharacterControls({
+        target: fbx,
+        camera: this.camera,
+      })
+
       const anim = new FBXLoader()
       anim.setPath(MODEL_PATH)
 
-      anim.load('dance.fbx', (anim) => {
-        this.mixer = new THREE.AnimationMixer(fbx)
-        const idle = this.mixer.clipAction(anim.animations[0])
-        idle.play()
+      anim.load('walk.fbx', (anim) => {
+        const animationMixer = new THREE.AnimationMixer(fbx)
+        this.mixers.push(animationMixer)
+
+        const action = animationMixer.clipAction(anim.animations[0])
+        action.play()
       })
 
       this.scene.add(fbx)
-
-      hideLoader()
+      hideLoader() // hide loader overlay
     })
   }
 
@@ -146,7 +296,9 @@ export default class Demo {
     this.previousTime = elapsedTime
 
     // Model animation
-    this.mixer?.update(deltaTime)
+    // this.mixer?.update(deltaTime)
+    this.mixers?.map((mix) => mix.update(deltaTime))
+    this.controls?.update(deltaTime)
 
     this.renderer.render(this.scene, this.camera)
 
