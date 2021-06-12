@@ -5,5 +5,7 @@ export const hideLoader = () => {
 
   // Show panel
   const panel = document.getElementById('panel-controls')
-  panel.style.display = 'block'
+  if (panel) {
+    panel.style.display = 'block'
+  }
 }

@@ -9,9 +9,6 @@ body {
   font-family: Arial, Helvetica, Arial, sans-serif;
 }
 
-#controls-container {
-}
-
 #webgl-container {
   height: 100vh;
   width: 100vw;
@@ -42,7 +39,7 @@ body {
   right: 0px;
 }
 
-li {
+#panel-controls > li {
   width: 100%;
   display: flex;
   flex-direction: row;

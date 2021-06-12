@@ -7,11 +7,21 @@ import Stats from 'three/examples/jsm/libs/stats.module'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 
-import BasicCharacterController from './models/controls/BasicCharacterController'
+import BasicCharacterController from './models/movements/BasicCharacterController'
+import ThirdPersonCamera from './models/cameras/ThirdPersonCamera'
 
 export default class Demo {
   constructor() {
     this.init()
+    this.gui = new dat.GUI({ width: 350 })
+
+    this.parameters = {
+      thirdPersonCamera: true,
+    }
+
+    this.gui
+      .add(this.parameters, 'thirdPersonCamera')
+      .name('Third Person Camera')
   }
 
   init() {
@@ -25,7 +35,6 @@ export default class Demo {
     this.currentAction = null
 
     this.container = document.getElementById('webgl-container')
-
     this.width = this.container.offsetWidth
     this.height = this.container.offsetHeight
 
@@ -46,7 +55,7 @@ export default class Demo {
     const near = 1.0
     const far = 1000.0
     this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
-    this.camera.position.set(0, 20, 60)
+    this.camera.position.set(25, 10, 35)
 
     // Scene
     this.scene = new THREE.Scene()
@@ -125,6 +134,11 @@ export default class Demo {
       scene: this.scene,
       path: '/models/girl/',
     })
+
+    this.thirdPersonCamera = new ThirdPersonCamera({
+      camera: this.camera,
+      target: this.controls,
+    })
   }
 
   /**
@@ -157,6 +171,18 @@ export default class Demo {
     })
   }
 
+  modelUpdates(deltaTime) {
+    // Animation
+    this.mixers?.map((mix) => mix.update(deltaTime))
+
+    // Movements
+    this.controls?.update(deltaTime)
+
+    // Camera
+    const isFreeCam = !this.parameters?.thirdPersonCamera
+    this.thirdPersonCamera.update(deltaTime, isFreeCam)
+  }
+
   render() {
     this.stats.begin()
 
@@ -164,10 +190,7 @@ export default class Demo {
     const deltaTime = elapsedTime - this.previousTime
     this.previousTime = elapsedTime
 
-    // Model animation
-    // this.mixer?.update(deltaTime)
-    this.mixers?.map((mix) => mix.update(deltaTime))
-    this.controls?.update(deltaTime)
+    this.modelUpdates(deltaTime)
 
     this.renderer.render(this.scene, this.camera)
 

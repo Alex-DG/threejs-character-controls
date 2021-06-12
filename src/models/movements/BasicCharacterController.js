@@ -15,6 +15,7 @@ class BasicCharacterController {
     this.decceleration = new THREE.Vector3(-0.0005, -0.0001, -5.0)
     this.acceleration = new THREE.Vector3(1.0, 0.25, 50.0)
     this.velocity = new THREE.Vector3(0, 0, 0)
+    this._position = new THREE.Vector3()
 
     this.animations = {}
 
@@ -37,6 +38,7 @@ class BasicCharacterController {
       })
 
       this.target = fbx
+
       this.params.scene.add(fbx)
 
       this.mixer = new THREE.AnimationMixer(fbx)
@@ -134,8 +136,8 @@ class BasicCharacterController {
 
     controlObject.quaternion.copy(R)
 
-    const oldPosition = new THREE.Vector3()
-    oldPosition.copy(controlObject.position)
+    // const oldPosition = new THREE.Vector3()
+    // oldPosition.copy(controlObject.position)
 
     const forward = new THREE.Vector3(0, 0, 1)
     forward.applyQuaternion(controlObject.quaternion)
@@ -151,9 +153,21 @@ class BasicCharacterController {
     controlObject.position.add(forward)
     controlObject.position.add(sideways)
 
-    oldPosition.copy(controlObject.position)
+    this._position.copy(controlObject.position)
 
     this.mixer?.update(time)
+  }
+
+  /**
+   * Getter
+   */
+  get rotation() {
+    if (!this.target) return new THREE.Quaternion()
+    return this.target.quaternion
+  }
+
+  get position() {
+    return this._position
   }
 }
 
