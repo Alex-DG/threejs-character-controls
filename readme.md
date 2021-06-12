@@ -2,7 +2,7 @@
 
 Load FBX character with animations. The 3d model and animations can be found on [mixamo.com](https://www.mixamo.com/) by Adobe.
 
-By pressing one of these keys: w,a,s,d and shift or space, you will be able to controle the character loaded.
+By pressing one of these keys: w,a,s,d and shift (turn on/off running mode) or space (start dancing!), you will be able to controle the character loaded.
 
 <img alt="movements" src="https://user-images.githubusercontent.com/4311684/121783253-73eebc00-cba5-11eb-9a19-0f9d7fa0953a.gif" width="250" height="250">
 <img alt="macarena" src="https://user-images.githubusercontent.com/4311684/121783271-8668f580-cba5-11eb-8f1d-ef949c7bf5a5.gif" width="250" height="250">
