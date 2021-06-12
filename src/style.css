@@ -20,31 +20,9 @@ body {
 #panel-controls {
   display: none;
   position: absolute;
-  min-width: 120px;
-  height: auto;
-
-  padding: 1em;
-  margin: 1em;
-
-  z-index: 20;
-
-  border: 1px solid black;
-  border-radius: 4px;
-
-  background-color: white;
-
-  list-style-type: none;
-
-  top: 0px;
-  right: 0px;
-}
-
-#panel-controls > li {
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
+  top: 10%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 #loading-container {
