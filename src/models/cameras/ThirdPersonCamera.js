@@ -29,7 +29,9 @@ class ThirdPersonCamera {
    * @param {Float} time - in second
    */
   update(time, freeCamera = false) {
-    if (!freeCamera) {
+    if (freeCamera) {
+      this.camera.lookAt(this.target.position)
+    } else {
       const idealOffset = this.calculateIdealOffset(-15, 20, -30)
       const idealLookat = this.calculateIdealLookat(0, 10, 50)
 

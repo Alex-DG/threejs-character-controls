@@ -5,6 +5,7 @@ import * as dat from 'dat.gui'
 
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 
 import BasicCharacterController from './models/movements/BasicCharacterController'
@@ -19,11 +20,14 @@ export default class Demo {
     this.directionalLightFolder = this.gui.addFolder('Directional Light')
 
     this.parameters = {
-      thirdPersonCamera: false,
+      thirdPersonCamera: true,
     }
 
     this.cameraFolder
       .add(this.parameters, 'thirdPersonCamera')
+      .onChange((value) => {
+        console.log({ value, cam: this.camera })
+      })
       .name('Third Person Camera')
 
     // Init model
@@ -59,7 +63,7 @@ export default class Demo {
     const fov = 60
     const aspect = this.width / this.height
     const near = 1.0
-    const far = 1000.0
+    const far = 2000.0
     this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
     this.camera.position.set(25, 10, 35)
 
@@ -85,8 +89,6 @@ export default class Demo {
     directionalLight.shadow.camera.top = 100
     directionalLight.shadow.camera.bottom = -100
     this.scene.add(directionalLight)
-
-    console.log({ directionalLight })
 
     this.directionalLightFolder.add(directionalLight, 'castShadow')
 
@@ -167,7 +169,7 @@ export default class Demo {
   }
 
   setupResize() {
-    window.addEventListener('resize', this.resize.bind(this))
+    window.addEventListener('resize', this.resize.bind(this), false)
   }
 
   loadAnimatedModel() {
