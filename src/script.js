@@ -12,16 +12,22 @@ import ThirdPersonCamera from './models/cameras/ThirdPersonCamera'
 
 export default class Demo {
   constructor() {
-    this.init()
     this.gui = new dat.GUI({ width: 350 })
 
+    this.cameraFolder = this.gui.addFolder('Camera')
+    this.ambientLightFolder = this.gui.addFolder('Ambient Light')
+    this.directionalLightFolder = this.gui.addFolder('Directional Light')
+
     this.parameters = {
-      thirdPersonCamera: true,
+      thirdPersonCamera: false,
     }
 
-    this.gui
+    this.cameraFolder
       .add(this.parameters, 'thirdPersonCamera')
       .name('Third Person Camera')
+
+    // Init model
+    this.init()
   }
 
   init() {
@@ -63,25 +69,61 @@ export default class Demo {
     this.scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000)
 
     // Light
-    let light = new THREE.DirectionalLight(0xffffff, 1.0)
-    light.position.set(20, 100, 10)
-    light.target.position.set(0, 0, 0)
-    light.castShadow = true
-    light.shadow.bias = -0.001
-    light.shadow.mapSize.width = 2048
-    light.shadow.mapSize.height = 2048
-    light.shadow.camera.near = 0.1
-    light.shadow.camera.far = 500.0
-    light.shadow.camera.near = 0.5
-    light.shadow.camera.far = 500.0
-    light.shadow.camera.left = 100
-    light.shadow.camera.right = -100
-    light.shadow.camera.top = 100
-    light.shadow.camera.bottom = -100
-    this.scene.add(light)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 3.7)
+    directionalLight.position.set(25, 80, 30)
+    directionalLight.target.position.set(0, 0, 0)
+    directionalLight.castShadow = true
+    directionalLight.shadow.bias = -0.001
+    directionalLight.shadow.mapSize.width = 2048
+    directionalLight.shadow.mapSize.height = 2048
+    directionalLight.shadow.camera.near = 0.1
+    directionalLight.shadow.camera.far = 500.0
+    directionalLight.shadow.camera.near = 0.5
+    directionalLight.shadow.camera.far = 500.0
+    directionalLight.shadow.camera.left = 100
+    directionalLight.shadow.camera.right = -100
+    directionalLight.shadow.camera.top = 100
+    directionalLight.shadow.camera.bottom = -100
+    this.scene.add(directionalLight)
 
-    light = new THREE.AmbientLight(0xffffff, 4.0)
-    this.scene.add(light)
+    console.log({ directionalLight })
+
+    this.directionalLightFolder.add(directionalLight, 'castShadow')
+
+    this.directionalLightFolder.add(directionalLight, 'visible')
+
+    this.directionalLightFolder
+      .add(directionalLight, 'intensity')
+      .min(0)
+      .max(100)
+      .step(0.001)
+      .name(`intensity`)
+    this.directionalLightFolder
+      .add(directionalLight.position, 'x')
+      .min(0)
+      .max(100)
+      .step(0.001)
+      .name(`light position X`)
+    this.directionalLightFolder
+      .add(directionalLight.position, 'y')
+      .min(0)
+      .max(100)
+      .step(0.001)
+      .name(`light position Y`)
+    this.directionalLightFolder
+      .add(directionalLight.position, 'z')
+      .min(0)
+      .max(100)
+      .step(0.001)
+      .name(`light position Z`)
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7)
+    this.scene.add(ambientLight)
+    this.ambientLightFolder
+      .add(ambientLight, 'intensity')
+      .min(0)
+      .max(6)
+      .step(0.1)
 
     // Orbit Controls
     this.orbitControls = new OrbitControls(
