@@ -8,8 +8,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 
-import BasicCharacterController from './models/movements/BasicCharacterController'
-import ThirdPersonCamera from './models/cameras/ThirdPersonCamera'
+import BasicCharacterController from './modules/movements/BasicCharacterController'
+import ThirdPersonCamera from './modules/cameras/ThirdPersonCamera'
 
 export default class Demo {
   constructor() {
