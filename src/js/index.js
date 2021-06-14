@@ -1,4 +1,4 @@
-import './style.css'
+import '../styles/index.css'
 
 import * as THREE from 'three'
 import * as dat from 'dat.gui'
@@ -8,8 +8,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 
-import BasicCharacterController from './modules/movements/BasicCharacterController'
-import ThirdPersonCamera from './modules/cameras/ThirdPersonCamera'
+import BasicCharacterController from './movements/BasicCharacterController'
+import ThirdPersonCamera from './cameras/ThirdPersonCamera'
 
 export default class Demo {
   constructor() {
