@@ -1,8 +1,10 @@
 /**
- * Final-State Machine
+ * Finite-State Machine
  * https://en.wikipedia.org/wiki/Finite-state_machine
  *
- * The FSM can change from one state to another in response to some inputs
+ * FSM manages animation's states from one to to another in response to keyboard inputs.
+ *
+ * ~ For example ~
  *
  * idle -> 'forward key' -> walk
  * walk -> 'stop' -> idle
